@@ -75,8 +75,10 @@ class ServerCommandManager: CommandsManager() {
   }
 
   private fun isAuthorized(request: String): Boolean {
-    // Never allow RTSP access when credentials are not configured.
-    if (user.isEmpty() || password.isEmpty()) return false
+    // Fail closed if credentials are missing or empty.
+    if (user.isNullOrEmpty() || password.isNullOrEmpty()) {
+        return false
+    }
 
     val supplied = getAuth(request)
     if (supplied.isEmpty()) return false
