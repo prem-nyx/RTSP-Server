@@ -52,4 +52,6 @@ dependencies {
     implementation(libs.rootEncoder.library)
     implementation(libs.ktor.network)
     implementation(libs.ktor.network.tls)
+    testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
 }

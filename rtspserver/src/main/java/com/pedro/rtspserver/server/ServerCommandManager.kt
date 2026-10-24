@@ -38,34 +38,25 @@ class ServerCommandManager: CommandsManager() {
   }
 
   fun createResponse(method: Method, request: String, cSeq: Int, clientIp: String): String {
-    return when (method){
+    if (method == Method.UNKNOWN) return createError(400, cSeq)
+
+    if (needAuth() && !isAuthorized(request)) {
+      Log.e(TAG, "RTSP authentication failed")
+      return createError(401, cSeq)
+    }
+
+    return when (method) {
       Method.OPTIONS -> createOptions(cSeq)
-      Method.DESCRIBE -> {
-        if (needAuth()) {
-          val auth = getAuth(request)
-          val data = "$user:$password"
-          val base64Data = Base64.encode(data.toByteArray())
-          if (base64Data.trim() == auth.trim()) {
-            Log.i(TAG, "basic auth success")
-            createDescribe(cSeq, clientIp) // auth accepted
-          } else {
-            Log.e(TAG, "basic auth error")
-            createError(401, cSeq)
-          }
-        } else {
-          createDescribe(cSeq, clientIp)
-        }
-      }
+      Method.DESCRIBE -> createDescribe(cSeq, clientIp)
       Method.SETUP -> {
         val track = getTrack(request)
         if (track != null) {
           protocol = getProtocol(request, track)
           when (protocol) {
-            Protocol.TCP -> {
-              createSetup(cSeq, track, clientIp)
-            }
+            Protocol.TCP -> createSetup(cSeq, track, clientIp)
             Protocol.UDP -> {
-              if (loadPorts(request, track)) createSetup(cSeq, track, clientIp) else createError(500, cSeq)
+              if (loadPorts(request, track)) createSetup(cSeq, track, clientIp)
+              else createError(500, cSeq)
             }
           }
         } else {
@@ -80,18 +71,25 @@ class ServerCommandManager: CommandsManager() {
   }
 
   private fun needAuth(): Boolean {
-    return !user.isNullOrEmpty() && !password.isNullOrEmpty()
+    return true
+  }
+
+  private fun isAuthorized(request: String): Boolean {
+    val supplied = getAuth(request)
+    if (supplied.isEmpty()) return false
+
+    val expected = Base64.encode("$user:$password".toByteArray())
+    return supplied == expected
   }
 
   private fun getAuth(request: String): String {
-    val rtspPattern = Pattern.compile("Authorization: Basic ([\\w+/=]+)")
-    val matcher = rtspPattern.matcher(request)
-    return if (matcher.find()) {
-      matcher.group(1) ?: ""
-    } else {
-      ""
-    }
+    val pattern = Pattern.compile(
+      "(?im)^Authorization:\\s*Basic\\s+([A-Za-z0-9+/]+={0,2})\\s*$"
+    )
+    val matcher = pattern.matcher(request)
+    return if (matcher.find()) matcher.group(1) ?: "" else ""
   }
+
 
   private fun getProtocol(request: String, track: Int): Protocol {
     return if (request.contains("UDP", true) || loadPorts(request, track)) {
