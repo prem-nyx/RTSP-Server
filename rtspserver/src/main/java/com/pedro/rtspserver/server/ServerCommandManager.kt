@@ -75,12 +75,15 @@ class ServerCommandManager: CommandsManager() {
   }
 
   private fun isAuthorized(request: String): Boolean {
+    // Never allow RTSP access when credentials are not configured.
+    if (user.isEmpty() || password.isEmpty()) return false
+
     val supplied = getAuth(request)
     if (supplied.isEmpty()) return false
 
     val expected = Base64.encode("$user:$password".toByteArray())
     return supplied == expected
-  }
+}
 
   private fun getAuth(request: String): String {
     val pattern = Pattern.compile(
