@@ -98,10 +98,7 @@ class ServerCommandManagerTest {
 
         for (method in methods) {
             val response = manager.createResponse(method, request(), 1, "127.0.0.1")
-            assertTrue(
-                "$method should reject missing credentials",
-                response.contains("401 Unauthorized")
-            )
+            assertTrue("$method should reject missing credentials", response.contains("401 Unauthorized"))
         }
     }
 
@@ -111,13 +108,16 @@ class ServerCommandManagerTest {
         manager = ServerCommandManager()
         manager.setAuth("", "")
 
-        val response = manager.createResponse(
-            Method.OPTIONS,
-            request(),
-            1,
-            "127.0.0.1"
-        )
-
+        val response = manager.createResponse(Method.OPTIONS, request(), 1, "127.0.0.1")
         assertTrue(response.contains("401 Unauthorized"))
     }
+
+    @Test
+    fun emptyServerCredentials_rejectExplicitEmptyBasicAuth() {
+        manager = ServerCommandManager()
+        manager.setAuth("", "")
+
+        val response = manager.createResponse(Method.OPTIONS, request(authorizationHeader("", "")), 1, "127.0.0.1")
+            assertTrue(response.contains("401 Unauthorized"))
+        }
 }
